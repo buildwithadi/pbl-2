@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recruiter Dashboard - AI Resume Scorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Simple spinner for this page */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #34d399; /* emerald-500 */
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased flex flex-col min-h-screen">
+
+    <header class="bg-gray-800 shadow-md border-b border-gray-700">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="/" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
+                    AI Resume Scorer
+                </a>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Student Portal</a>
+                    <a href="/recruiter" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Create Job</a>
+                    <a href="/dashboard" class="bg-gray-700 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 md:p-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-white mb-6">
+            Recruiter Dashboard
+        </h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-1 bg-gray-800 shadow-xl rounded-2xl p-6">
+                <h2 class="text-2xl font-semibold text-emerald-400 mb-4">Job Postings</h2>
+                <div id="jobs-loader" class="flex justify-center py-8">
+                    <div class="spinner"></div>
+                </div>
+                <ul id="jobs-list" class="space-y-3">
+                    </ul>
+            </div>
+
+            <div class="lg:col-span-2 bg-gray-800 shadow-xl rounded-2xl p-6">
+                <h2 class="text-2xl font-semibold text-cyan-400 mb-4" id="candidates-title">
+                    Select a Job
+                </h2>
+                <div id="candidates-loader" class="hidden flex justify-center py-8">
+                    <div class="spinner"></div>
+                </div>
+                <div id="candidates-container" class="overflow-x-auto">
+                    <p id="candidates-placeholder" class="text-gray-400">Please select a job from the left to see the list of candidates and their scores.</p>
+                    <table id="candidates-table" class="hidden min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rank</th>
+                                <th scope="col" class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Score</th>
+                                <th scope="col" class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                                <th scope="col" class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="candidates-list" class="bg-gray-800 divide-y divide-gray-700">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 border-t border-gray-700 shadow-inner mt-auto">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500">
+            <p>&copy; 2025 AI Resume Scorer. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- DOM Elements ---
+        const jobsList = document.getElementById('jobs-list');
+        const jobsLoader = document.getElementById('jobs-loader');
+        const candidatesTitle = document.getElementById('candidates-title');
+        const candidatesLoader = document.getElementById('candidates-loader');
+        const candidatesPlaceholder = document.getElementById('candidates-placeholder');
+        const candidatesTable = document.getElementById('candidates-table');
+        const candidatesList = document.getElementById('candidates-list');
+
+        let activeJobButton = null;
+
+        // --- Main Function ---
+        window.addEventListener('load', () => {
+            loadJobs();
+        });
+
+        // --- Data Loading Functions ---
+
+        /**
+         * UPDATED: Fetches all jobs and builds the list with a new "Copy Link" button.
+         */
+        async function loadJobs() {
+            try {
+                const response = await fetch('/jobs/');
+                if (!response.ok) throw new Error('Failed to fetch jobs');
+                const jobs = await response.json();
+                
+                jobsLoader.classList.add('hidden');
+                jobsList.innerHTML = ''; // Clear list
+
+                if (jobs.length === 0) {
+                    jobsList.innerHTML = '<p class="text-gray-400">No jobs created yet. Go to the "Create Job" page to add one.</p>';
+                    return;
+                }
+
+                jobs.forEach(job => {
+                    const li = document.createElement('li');
+                    // We use an <li> for the whole row now
+                    li.className = "flex items-center justify-between gap-2 p-4 bg-gray-700 rounded-lg";
+                    
+                    // Use innerHTML for the structure
+                    li.innerHTML = `
+                        <div class="job-info flex-grow cursor-pointer hover:opacity-80">
+                            <span class="block font-semibold text-white">${job.text.substring(0, 50)}...</span>
+                            <span class="block text-sm text-gray-400">${job.id}</span>
+                        </div>
+                        <button class="copy-link-btn flex-shrink-0 py-2 px-3 text-xs font-semibold rounded-md text-gray-900 bg-emerald-500 hover:bg-emerald-400 transition-colors duration-200">
+                            Copy Link
+                        </button>
+                    `;
+                    
+                    // Add event listeners to the new elements
+                    li.querySelector('.job-info').addEventListener('click', () => {
+                        loadCandidates(job.id, job.text, li); // Pass the <li> for highlighting
+                    });
+                    
+                    li.querySelector('.copy-link-btn').addEventListener('click', (e) => {
+                        e.stopPropagation(); // Stop click from triggering loadCandidates
+                        copyJobLink(job.id, e.target); // Pass the button element
+                    });
+
+                    jobsList.appendChild(li);
+                });
+
+            } catch (error) {
+                console.error(error);
+                jobsLoader.classList.add('hidden');
+                jobsList.innerHTML = '<p class="text-red-400">Error loading jobs.</p>';
+            }
+        }
+
+        /**
+         * UPDATED: Handles highlighting the <li> element correctly.
+         */
+        async function loadCandidates(jobId, jobText, liElement) {
+            // Set UI to loading state
+            candidatesTitle.textContent = `Loading candidates for "${jobText.substring(0, 30)}..."`;
+            candidatesPlaceholder.classList.add('hidden');
+            candidatesTable.classList.add('hidden');
+            candidatesLoader.classList.remove('hidden');
+            candidatesList.innerHTML = '';
+
+            // Handle highlighting
+            if (activeJobButton) {
+                activeJobButton.classList.remove('bg-emerald-800'); // Remove highlight
+                activeJobButton.classList.add('bg-gray-700'); // Add default
+            }
+            activeJobButton = liElement;
+            activeJobButton.classList.remove('bg-gray-700'); // Remove default
+            activeJobButton.classList.add('bg-emerald-800'); // Add highlight
+
+            try {
+                const response = await fetch(`/job/${jobId}/candidates`);
+                if (!response.ok) throw new Error('Failed to fetch candidates');
+                const candidates = await response.json();
+                
+                candidatesLoader.classList.add('hidden');
+
+                if (candidates.length === 0) {
+                    candidatesPlaceholder.textContent = 'No candidates have applied for this job yet.';
+                    candidatesPlaceholder.classList.remove('hidden');
+                    return;
+                }
+
+                // Populate table
+                candidatesTable.classList.remove('hidden');
+                candidates.forEach((candidate, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-700";
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 text-sm text-gray-300">${index + 1}</td>
+                        <td class="py-3 px-4 text-sm font-medium text-emerald-400">${candidate.score.toFixed(2)}%</td>
+                        <td class="py-3 px-4 text-sm text-gray-200">${candidate.full_name}</td>
+                        <td class="py-3 px-4 text-sm text-gray-400">${candidate.email}</td>
+                    `;
+                    candidatesList.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error(error);
+                candidatesLoader.classList.add('hidden');
+                candidatesPlaceholder.textContent = 'Error loading candidates.';
+                candidatesPlaceholder.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * NEW: Handles the copy-to-clipboard logic
+         */
+        function copyJobLink(jobId, buttonElement) {
+            const jobURL = `${window.location.origin}/?job_id=${jobId}`;
+            
+            // Use the modern clipboard API
+            navigator.clipboard.writeText(jobURL).then(() => {
+                // Give user feedback
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = 'Copied!';
+                buttonElement.disabled = true;
+                setTimeout(() => {
+                    buttonElement.textContent = originalText;
+                    buttonElement.disabled = false;
+                }, 2000); // Reset after 2 seconds
+            }).catch(err => {
+                console.error('Failed to copy link: ', err);
+                // Fallback for older browsers
+                alert('Failed to copy link. Please copy manually.');
+            });
+        }
+    </script>
+</body>
+</html>

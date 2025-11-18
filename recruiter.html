@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recruiter Portal - AI Resume Scorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Spinning animation for the loader */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #34d399; /* emerald-500 */
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased flex flex-col min-h-screen">
+
+    <header class="bg-gray-800 shadow-md border-b border-gray-700">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="/" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
+                    AI Resume Scorer
+                </a>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Student Portal</a>
+                    <a href="/recruiter" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Create Job</a>
+                    <a href="/dashboard" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-gray-800 shadow-xl rounded-2xl p-8 md:p-12 w-full max-w-2xl">
+            
+            <div class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
+                    Recruiter Portal
+                </h1>
+                <p class="text-gray-400 mt-2">
+                    Create a new job to generate a unique link for students.
+                </p>
+            </div>
+
+            <div id="recruiter-view" class="space-y-6">
+                
+                <form id="jobForm" class="space-y-6">
+                    <div>
+                        <label for="jobDescription" class="block text-sm font-medium text-gray-300 mb-2">
+                            Paste the Job Description
+                        </label>
+                        <textarea 
+                            id="jobDescription" 
+                            rows="12" 
+                            placeholder="Paste the full job description here..." 
+                            class="w-full p-4 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors duration-200 resize-none"
+                        ></textarea>
+                    </div>
+                    <div>
+                        <button 
+                            type="submit" 
+                            id="create-job-button"
+                            class="w-full flex items-center justify-center gap-3 py-3 px-5 text-lg font-semibold rounded-lg text-gray-900 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-200 transform hover:scale-105"
+                        >
+                            <span id="create-button-text">Create Job Link</span>
+                            <div id="create-loader" class="loader hidden"></div>
+                        </button>
+                    </div>
+                </form>
+
+                <div id="result" class="hidden mt-6 text-center">
+                    <p class="text-lg text-emerald-400 font-semibold">Success! Share this link with students:</p>
+                    <div class="flex items-center gap-2 mt-4">
+                        <input 
+                            type="text" 
+                            id="jobLink" 
+                            readonly 
+                            class="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-300"
+                        >
+                        <button 
+                            id="copy-link-button" 
+                            class="flex-shrink-0 py-3 px-5 font-semibold rounded-lg text-gray-900 bg-emerald-500 hover:bg-emerald-400 transition-colors duration-200"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                </div>
+
+                <div id="error-container" class="mt-6 text-center text-red-400 hidden">
+                    <p id="error-message"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 border-t border-gray-700 shadow-inner mt-auto">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500">
+            <p>&copy; 2025 AI Resume Scorer. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- DOM Elements ---
+        const form = document.getElementById('jobForm');
+        const jobDescriptionInput = document.getElementById('jobDescription');
+        const resultDiv = document.getElementById('result');
+        const jobLinkInput = document.getElementById('jobLink');
+        const copyLinkButton = document.getElementById('copy-link-button');
+        
+        // Button and Loader
+        const createJobButton = document.getElementById('create-job-button');
+        const createButtonText = document.getElementById('create-button-text');
+        const createLoader = document.getElementById('create-loader');
+        
+        // Error Display
+        const errorContainer = document.getElementById('error-container');
+        const errorMessage = document.getElementById('error-message');
+
+        // --- Event Listeners ---
+        form.addEventListener('submit', handleCreateJob);
+        copyLinkButton.addEventListener('click', copyLinkToClipboard);
+
+        async function handleCreateJob(e) {
+            e.preventDefault();
+            hideError();
+            
+            const description = jobDescriptionInput.value;
+            if (!description.trim()) {
+                showError("Please paste a job description.");
+                return;
+            }
+
+            setLoading(true);
+            
+            const formData = new FormData();
+            formData.append('job_description', description);
+
+            try {
+                const response = await fetch('/create-job/', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to create job.');
+                }
+
+                const data = await response.json();
+                
+                // Build the correct URL
+                const jobURL = `${window.location.origin}/?job_id=${data.job_id}`; 
+
+                // Show the result
+                jobLinkInput.value = jobURL;
+                resultDiv.classList.remove('hidden');
+                
+                // Hide the form after success
+                form.classList.add('hidden');
+
+            } catch (error) {
+                console.error(error);
+                showError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function copyLinkToClipboard() {
+            jobLinkInput.select();
+            jobLinkInput.setSelectionRange(0, 99999); // For mobile
+            try {
+                document.execCommand('copy');
+                copyLinkButton.textContent = 'Copied!';
+                setTimeout(() => { copyLinkButton.textContent = 'Copy'; }, 2000);
+            } catch (err) {
+                console.error('Failed to copy link: ', err);
+            }
+        }
+
+        // --- UI Helper Functions ---
+        function setLoading(isLoading) {
+            if (isLoading) {
+                createButtonText.classList.add('hidden');
+                createLoader.classList.remove('hidden');
+                createJobButton.disabled = true;
+                createJobButton.classList.add('opacity-75', 'cursor-not-allowed');
+            } else {
+                createButtonText.classList.remove('hidden');
+                createLoader.classList.add('hidden');
+                createJobButton.disabled = false;
+                createJobButton.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorContainer.classList.add('hidden');
+            errorMessage.textContent = '';
+        }
+    </script>
+</body>
+</html>
