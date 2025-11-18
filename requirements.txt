@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-multipart
+scikit-learn
+nltk
+PyPDF2
+python-docx
+sqlalchemy
+aiosqlite

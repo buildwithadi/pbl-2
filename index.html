@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Scorer AI</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Spinning animation for the loader */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #34d399; /* emerald-500 */
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
+
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-gray-800 shadow-xl rounded-2xl p-8 md:p-12 w-full max-w-2xl">
+            
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
+                    AI Resume Scorer
+                </h1>
+                <p class="text-gray-400 mt-2" id="header-subtitle">
+                    Create a new job link or upload your resume to score it.
+                </p>
+            </div>
+
+            <!-- ===== RECRUITER VIEW (Default) ===== -->
+            <div id="recruiter-view" class="space-y-6">
+                <p class="text-center text-lg text-gray-300">
+                    Welcome, Recruiter! Create a new job listing to get a unique link for students.
+                </p>
+                <!-- Form to CREATE a Job -->
+                <form id="create-job-form" class="space-y-6">
+                    <div>
+                        <label for="job-description-create" class="block text-sm font-medium text-gray-300 mb-2">
+                            Paste the Job Description
+                        </label>
+                        <textarea id="job-description-create" rows="12" placeholder="Paste the full job description here..." class="w-full p-4 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors duration-200 resize-none"></textarea>
+                    </div>
+                    <div>
+                        <button type="submit" id="create-job-button" class="w-full flex items-center justify-center gap-3 py-3 px-5 text-lg font-semibold rounded-lg text-gray-900 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-200 transform hover:scale-105">
+                            <span id="create-button-text">Create Job Link</span>
+                            <div id="create-loader" class="loader hidden"></div>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Link Display (hidden by default) -->
+                <div id="link-display" class="hidden mt-6 text-center">
+                    <p class="text-lg text-emerald-400 font-semibold">Success! Share this link with students:</p>
+                    <div class="flex items-center gap-2 mt-4">
+                        <input type="text" id="unique-link" readonly class="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-300">
+                        <button id="copy-link-button" class="flex-shrink-0 py-3 px-5 font-semibold rounded-lg text-gray-900 bg-emerald-500 hover:bg-emerald-400 transition-colors duration-200">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== STUDENT VIEW (Hidden by default) ===== -->
+            <div id="student-view" class="hidden space-y-6">
+                
+                <!-- Job Info Display -->
+                <div id="job-info-display" class="p-4 bg-gray-700 border border-gray-600 rounded-lg">
+                    <h2 class="text-lg font-semibold text-emerald-400 mb-2">Applying for Job:</h2>
+                    <p id="job-info-text" class="text-gray-300 text-sm max-h-32 overflow-y-auto">
+                        Loading job description...
+                    </p>
+                </div>
+
+                <!-- Form to SCORE a Resume -->
+                <form id="scorer-form" class="space-y-6">
+                    <div>
+                        <label for="resume-file" class="block text-sm font-medium text-gray-300 mb-2">
+                            1. Upload Your Resume (.pdf, .docx)
+                        </label>
+                        <input type="file" id="resume-file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="block w-full text-sm text-gray-400
+                            file:mr-4 file:py-3 file:px-5
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-emerald-500 file:text-emerald-950
+                            hover:file:bg-emerald-400
+                            file:transition-colors file:duration-200 file:cursor-pointer
+                            bg-gray-700 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div>
+                        <button type="submit" id="submit-button" class="w-full flex items-center justify-center gap-3 py-3 px-5 text-lg font-semibold rounded-lg text-gray-900 bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-500 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all duration-200 transform hover:scale-105">
+                            <span id="button-text">Calculate My Score</span>
+                            <div id="loader" class="loader hidden"></div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ===== SHARED ELEMENTS ===== -->
+
+            <!-- Result Display -->
+            <div id="result-container" class="mt-8 text-center hidden">
+                <p class="text-gray-400 mb-2">Your match score is:</p>
+                <div id="score-display" class="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">
+                    <!-- e.g., 87% -->
+                </div>
+                <p id="score-feedback" class="text-lg text-gray-300 mt-4"></p>
+            </div>
+
+            <!-- Error Display -->
+            <div id="error-container" class="mt-6 text-center text-red-400 hidden">
+                <p id="error-message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global State ---
+        let currentJobId = null;
+
+        // --- DOM Elements ---
+        let recruiterView, studentView, headerSubtitle, createJobForm, createJobButton, createButtonText, createLoader, jdCreateTextarea, linkDisplay, uniqueLink, copyLinkButton, jobInfoDisplay, jobInfoText, scorerForm, submitButton, buttonText, loader, resultContainer, scoreDisplay, scoreFeedback, errorContainer, errorMessage, resumeFileInput;
+
+        // --- Main Function on Load ---
+        window.addEventListener('load', () => {
+            // Find all DOM elements
+            findElements();
+            
+            // Check URL for a job ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const jobId = urlParams.get('job_id');
+
+            if (jobId) {
+                // If job_id exists, load the Student View
+                currentJobId = jobId;
+                loadStudentView(jobId);
+            } else {
+                // Otherwise, show the default Recruiter View
+                loadRecruiterView();
+            }
+
+            // Add event listeners
+            createJobForm.addEventListener('submit', handleCreateJob);
+            scorerForm.addEventListener('submit', handleSubmitResume);
+            copyLinkButton.addEventListener('click', copyLinkToClipboard);
+        });
+
+        function findElements() {
+            // Views
+            recruiterView = document.getElementById('recruiter-view');
+            studentView = document.getElementById('student-view');
+            headerSubtitle = document.getElementById('header-subtitle');
+            
+            // Recruiter View
+            createJobForm = document.getElementById('create-job-form');
+            createJobButton = document.getElementById('create-job-button');
+            createButtonText = document.getElementById('create-button-text');
+            createLoader = document.getElementById('create-loader');
+            jdCreateTextarea = document.getElementById('job-description-create');
+            linkDisplay = document.getElementById('link-display');
+            uniqueLink = document.getElementById('unique-link');
+            copyLinkButton = document.getElementById('copy-link-button');
+
+            // Student View
+            jobInfoDisplay = document.getElementById('job-info-display');
+            jobInfoText = document.getElementById('job-info-text');
+            scorerForm = document.getElementById('scorer-form');
+            submitButton = document.getElementById('submit-button');
+            buttonText = document.getElementById('button-text');
+            loader = document.getElementById('loader');
+            resumeFileInput = document.getElementById('resume-file');
+
+            // Shared
+            resultContainer = document.getElementById('result-container');
+            scoreDisplay = document.getElementById('score-display');
+            scoreFeedback = document.getElementById('score-feedback');
+            errorContainer = document.getElementById('error-container');
+            errorMessage = document.getElementById('error-message');
+        }
+
+        // --- View Switching ---
+
+        function loadRecruiterView() {
+            studentView.classList.add('hidden');
+            recruiterView.classList.remove('hidden');
+            headerSubtitle.textContent = "Create a new job link to share with students.";
+        }
+
+        async function loadStudentView(jobId) {
+            recruiterView.classList.add('hidden');
+            studentView.classList.remove('hidden');
+            headerSubtitle.textContent = "Upload your resume to score it against the job.";
+
+            // Fetch the job description to display a snippet
+            try {
+                const response = await fetch(`/job/${jobId}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || "Job not found");
+                }
+                const data = await response.json();
+                // Display a snippet
+                jobInfoText.textContent = data.text.substring(0, 300) + "...";
+            } catch (error) {
+                jobInfoText.textContent = "Error loading job description.";
+                showError(error.message);
+                submitButton.disabled = true; // Disable submission if job can't load
+            }
+        }
+
+        // --- Event Handlers ---
+
+        async function handleCreateJob(e) {
+            e.preventDefault();
+            const jobDescription = jdCreateTextarea.value;
+
+            if (!jobDescription.trim()) {
+                showError("Please paste a job description.");
+                return;
+            }
+
+            setLoading(true, createButtonText, createLoader, createJobButton);
+            hideError();
+            hideResult();
+
+            const formData = new FormData();
+            formData.append('job_description', jobDescription);
+
+            try {
+                const response = await fetch('/create-job/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || "Failed to create job");
+                }
+
+                const data = await response.json();
+                const link = `${window.location.origin}${window.location.pathname}?job_id=${data.job_id}`;
+                
+                // Show the link
+                uniqueLink.value = link;
+                linkDisplay.classList.remove('hidden');
+                // Hide the form to prevent multiple submissions
+                createJobForm.classList.add('hidden');
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                setLoading(false, createButtonText, createLoader, createJobButton);
+            }
+        }
+
+        async function handleSubmitResume(e) {
+            e.preventDefault();
+            const resumeFile = resumeFileInput.files[0];
+
+            hideError();
+            hideResult();
+
+            if (!resumeFile) {
+                showError('Please upload your resume file.');
+                return;
+            }
+            if (!currentJobId) {
+                showError('No job ID found. Please use the correct link.');
+                return;
+            }
+
+            setLoading(true, buttonText, loader, submitButton);
+
+            const formData = new FormData();
+            formData.append('resume_file', resumeFile);
+            formData.append('job_id', currentJobId); // Send job_id, not text
+
+            try {
+                const response = await fetch('/score-resume/', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                showResult(result.match_percentage);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'An unexpected error occurred.');
+            } finally {
+                setLoading(false, buttonText, loader, submitButton);
+            }
+        }
+
+        function copyLinkToClipboard() {
+            uniqueLink.select();
+            uniqueLink.setSelectionRange(0, 99999); // For mobile
+            try {
+                document.execCommand('copy');
+                copyLinkButton.textContent = 'Copied!';
+                setTimeout(() => { copyLinkButton.textContent = 'Copy'; }, 2000);
+            } catch (err) {
+                console.error('Failed to copy link: ', err);
+            }
+        }
+
+        // --- UI Helper Functions ---
+
+        function setLoading(isLoading, textElem, loaderElem, buttonElem) {
+            if (isLoading) {
+                textElem.classList.add('hidden');
+                loaderElem.classList.remove('hidden');
+                buttonElem.disabled = true;
+                buttonElem.classList.add('opacity-75', 'cursor-not-allowed');
+            } else {
+                textElem.classList.remove('hidden');
+                loaderElem.classList.add('hidden');
+                buttonElem.disabled = false;
+                buttonElem.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        function showResult(percentage) {
+            const score = Math.round(percentage);
+            scoreDisplay.textContent = `${score}%`;
+
+            let feedback = '';
+            if (score >= 85) {
+                feedback = "Excellent match! You're a very strong candidate.";
+            } else if (score >= 70) {
+                feedback = "Great fit! Your resume aligns well with the role.";
+            } else if (score >= 50) {
+                feedback = "Good potential. Consider tailoring your resume to highlight key skills.";
+            } else {
+                feedback = "This might be a stretch. Review the JD and your resume for missing keywords.";
+            }
+            scoreFeedback.textContent = feedback;
+            
+            resultContainer.classList.remove('hidden');
+        }
+
+        function hideResult() {
+            resultContainer.classList.add('hidden');
+            scoreDisplay.textContent = '';
+            scoreFeedback.textContent = '';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorContainer.classList.add('hidden');
+            errorMessage.textContent = '';
+        }
+
+    </script>
+</body>
+</html>
